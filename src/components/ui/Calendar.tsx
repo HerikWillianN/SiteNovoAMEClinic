@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface CalendarProps {
-  selectedDates: string[];
-  onDateChange: (dates: string[]) => void;
+  selectedDate: string | null; // Alterado para data única
+  onDateChange: (date: string) => void; // Alterado para data única
+  availableDates?: string[]; // Datas disponíveis no formato YYYY-MM-DD
 }
 
-const Calendar: React.FC<CalendarProps> = ({ selectedDates, onDateChange }) => {
+const Calendar: React.FC<CalendarProps> = ({ selectedDate, onDateChange, availableDates = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -18,10 +19,11 @@ const Calendar: React.FC<CalendarProps> = ({ selectedDates, onDateChange }) => {
   const handleDateClick = (day: number) => {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
     const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD
-    const newSelectedDates = selectedDates.includes(dateString)
-      ? selectedDates.filter(d => d !== dateString)
-      : [...selectedDates, dateString];
-    onDateChange(newSelectedDates);
+    
+    // Permite o clique apenas se a data estiver disponível
+    if (availableDates.includes(dateString)) {
+      onDateChange(dateString);
+    }
   };
 
   const prevMonth = () => {
@@ -40,11 +42,25 @@ const Calendar: React.FC<CalendarProps> = ({ selectedDates, onDateChange }) => {
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
       const dateString = date.toISOString().split('T')[0];
-      const isSelected = selectedDates.includes(dateString);
+      const isSelected = selectedDate === dateString;
+      const isAvailable = availableDates.includes(dateString);
+
+      let dayClass = 'w-10 h-10 flex items-center justify-center rounded-full';
+      if (isAvailable) {
+        dayClass += ' cursor-pointer';
+        if (isSelected) {
+          dayClass += ' bg-primary text-white';
+        } else {
+          dayClass += ' bg-teal-100 text-teal-800 hover:bg-teal-200';
+        }
+      } else {
+        dayClass += ' text-gray-400 cursor-not-allowed';
+      }
+
       days.push(
         <div key={i} 
-             className={`w-10 h-10 flex items-center justify-center cursor-pointer rounded-full ${isSelected ? 'bg-primary text-white' : 'hover:bg-gray-200'}`}
-             onClick={() => handleDateClick(i)}>
+             className={dayClass}
+             onClick={() => isAvailable && handleDateClick(i)}>
           {i}
         </div>
       );
