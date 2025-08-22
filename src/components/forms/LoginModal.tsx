@@ -27,7 +27,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
 
   const onSubmit = async (data: any) => {
     try {
-      await login(data.email, data.password, 'paciente');
+      await login(data.email, data.password);
       onClose();
     } catch (error) {
       showNotification('Email ou senha incorretos. Tente novamente.', 'error');

@@ -25,7 +25,7 @@ const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClose }) =>
   });
 
   const onSubmit = async (data: any) => {
-    await login(data.email, data.password, 'admin');
+    await login(data.email, data.password);
     onClose();
     navigate('/admin');
   };

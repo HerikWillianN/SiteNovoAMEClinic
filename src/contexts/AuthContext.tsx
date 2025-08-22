@@ -9,7 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   userType: 'paciente' | 'admin' | null;
-  login: (email: string, password: string, type: 'paciente' | 'admin') => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   register: (userData: any) => Promise<void>;
   updateProfile: (data: Partial<User | Paciente>) => Promise<void>;
@@ -37,82 +37,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const login = async (email: string, password: string, type: 'paciente' | 'admin') => {
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
     showLoading();
     
     try {
-      // Admin login hardcoded (como você tinha)
-      if (email === 'admin@ameclinic.com' && password === 'admin2025' && type === 'admin') {
-        const adminUser: User = { 
-          id: 'admin1', 
-          email, 
-          type: 'admin', 
-          createdAt: new Date().toISOString(), 
-          name: 'Admin' 
-        };
-        setUser(adminUser);
-        setUserType('admin');
-        localStorage.setItem('user', JSON.stringify(adminUser));
-        localStorage.setItem('userType', 'admin');
-        return;
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Credenciais inválidas');
       }
 
-      // Paciente login via JSON Server
-      if (type === 'paciente') {
-        const response = await fetch(`${API_URL}/users?email=${email}&password=${password}`);
-        const users = await response.json();
-        
-        if (users.length > 0) {
-          const userData = users[0];
-          
-          // Estruturar dados conforme interface Paciente
-          const endereco: Endereco = {
-            cep: userData.cep,
-            rua: userData.street,
-            numero: userData.number,
-            complemento: userData.complement,
-            cidade: userData.city,
-            estado: userData.state,
-          };
+      const userData = await response.json();
+      const userType = userData.type;
 
-          const contatoEmergencia: ContatoEmergencia = {
-            nome: userData.emergencyContactName,
-            telefone: userData.emergencyContactPhone,
-          };
+      // A API agora retorna todos os dados necessários.
+      // A lógica de estruturar o objeto foi simplificada.
+      setUser(userData);
+      setUserType(userType);
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('userType', userType);
 
-          const convenio: Convenio | undefined = userData.hasInsurance === 'yes' ? {
-            nome: userData.insuranceName,
-            numeroCarteirinha: userData.insuranceId,
-          } : undefined;
-
-          const paciente: Paciente = {
-            id: userData.id.toString(),
-            email: userData.email,
-            type: 'paciente',
-            createdAt: userData.createdAt,
-            name: userData.fullName,
-            nome: userData.fullName,
-            cpf: userData.cpf,
-            telefone: userData.phone,
-            dataNascimento: userData.birthDate,
-            endereco,
-            contatoEmergencia,
-            convenio,
-          };
-          
-          setUser(paciente);
-          setUserType('paciente');
-          localStorage.setItem('user', JSON.stringify(paciente));
-          localStorage.setItem('userType', 'paciente');
-          navigate('/dashboard');
-          return;
-        }
+      if (userType === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
       }
-      
-      // Se chegou até aqui, credenciais inválidas
-      throw new Error('Credenciais inválidas');
-      
+
     } catch (error) {
       console.error('Erro no login:', error);
       throw error;
@@ -137,73 +95,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     showLoading();
     
     try {
-      // Verificar se email já existe
-      const checkResponse = await fetch(`${API_URL}/users?email=${userData.email}`);
-      const existingUsers = await checkResponse.json();
-      
-      if (existingUsers.length > 0) {
-        throw new Error('Este email já está cadastrado!');
-      }
-      
-      // Criar novo usuário
-      const newUser = {
-        ...userData,
-        type: 'paciente', // Sempre paciente no registro
-        createdAt: new Date().toISOString()
-      };
-      
-      const response = await fetch(`${API_URL}/users`, {
+      const response = await fetch('/api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newUser)
+        body: JSON.stringify(userData)
       });
       
       if (!response.ok) {
-        throw new Error('Erro ao cadastrar usuário');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro ao cadastrar usuário');
       }
       
       const createdUser = await response.json();
       console.log('Usuário cadastrado com sucesso:', createdUser);
-      
-      // Estruturar dados para Paciente após cadastro
-      const endereco: Endereco = {
-        cep: createdUser.cep,
-        rua: createdUser.street,
-        numero: createdUser.number,
-        complemento: createdUser.complement,
-        cidade: createdUser.city,
-        estado: createdUser.state,
-      };
-
-      const contatoEmergencia: ContatoEmergencia = {
-        nome: createdUser.emergencyContactName,
-        telefone: createdUser.emergencyContactPhone,
-      };
-
-      const convenio: Convenio | undefined = createdUser.hasInsurance === 'yes' ? {
-        nome: createdUser.insuranceName,
-        numeroCarteirinha: createdUser.insuranceId,
-      } : undefined;
-
-      const paciente: Paciente = {
-        id: createdUser.id.toString(),
-        email: createdUser.email,
-        type: 'paciente',
-        createdAt: createdUser.createdAt,
-        name: createdUser.fullName,
-        nome: createdUser.fullName,
-        cpf: createdUser.cpf,
-        telefone: createdUser.phone,
-        dataNascimento: createdUser.birthDate,
-        endereco,
-        contatoEmergencia,
-        convenio,
-      };
-      
-      // Não faz login automático, apenas cadastra
-      // O usuário será redirecionado para a tela de login
       
     } catch (error) {
       console.error('Erro no registro:', error);
